@@ -1,0 +1,19 @@
+{
+  "name": "whatsapp-web-rest-api",
+  "version": "0.1.1",
+  "description": "REST API For Whatsapp Web",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "main": "index.js",
+  "author": "Chandra Bachtiar <chandrabahtiar25@gmail.com>",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@fastify/cors": "^10.0.2",
+    "dotenv": "^16.4.7",
+    "fastify": "^5.2.1",
+    "qrcode": "^1.5.4",
+    "whatsapp-web.js": "^1.26.0"
+  }
+}
