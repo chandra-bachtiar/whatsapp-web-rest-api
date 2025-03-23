@@ -48,6 +48,19 @@ client.on("ready", () => {
     whatsapp.from = new Date();
 });
 
+client.on("disconnected", (reason) => {
+    console.log("WhatsApp Bot Disconnected", reason);
+    whatsapp.status = false;
+    whatsapp.number = null;
+    whatsapp.from = null;
+});
+
+client.on("message", async (message) => {
+    if (message.body === "life-check") {
+        await message.reply("Im here!");
+    }
+});
+
 // Endpoint QR dengan auth
 fastify.get("/qr", {
     preHandler: apiKeyCheck,
@@ -78,6 +91,7 @@ fastify.get("/logout", {
 fastify.post("/send", {
     preHandler: apiKeyCheck,
     handler: async (request, reply) => {
+        console.log(request.body);
         const { number, message } = request.body;
         if (!number || !message) {
             return reply.code(400).send({ error: "Number dan message harus diisi" });
@@ -85,6 +99,7 @@ fastify.post("/send", {
 
         try {
             const chatId = number.includes("@c.us") ? number : `${number}@c.us`;
+            console.log(chatId, message);
             await client.sendMessage(chatId, message);
             reply.send({ success: true, message: "Pesan terkirim" });
         } catch (error) {
