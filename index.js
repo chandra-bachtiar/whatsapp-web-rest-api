@@ -28,11 +28,22 @@ const apiKeyCheck = async (request, reply) => {
 };
 
 const client = new Client({
-    authStrategy: new LocalAuth(),
+    authStrategy: new LocalAuth({
+        dataPath: './whatsapp-session'
+    }),
     puppeteer: {
         headless: true,
-        executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
-    },
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu'
+        ],
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser'
+    }
 });
 
 client.on("qr", async (qr) => {
