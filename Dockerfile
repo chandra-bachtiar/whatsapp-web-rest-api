@@ -28,7 +28,7 @@ RUN yarn install --frozen-lockfile
 # Copy seluruh kode aplikasi
 COPY . .
 
-# Expose port yang diperlukan (sesuaikan port jika perlu)
+# Expose port yang diperlukan
 EXPOSE 3000
 
 # Command untuk menjalankan aplikasi

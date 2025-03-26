@@ -3,6 +3,9 @@ import Fastify from "fastify";
 import fastifyCors from '@fastify/cors';
 import whatsappWeb from "whatsapp-web.js";
 import QRCode from "qrcode";
+import qrcode from "qrcode-terminal";
+import { google } from "googleapis";
+import cron from "node-cron";
 
 const { Client, LocalAuth } = whatsappWeb;
 const fastify = Fastify({ logger: true });
@@ -12,6 +15,7 @@ fastify.register(fastifyCors, {
 });
 
 let qrCodeData = null;
+let cronJob;
 let whatsapp = {
     status: false,
     number: null,
@@ -42,13 +46,18 @@ const client = new Client({
             '--no-zygote',
             '--disable-gpu'
         ],
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser'
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" || '/usr/bin/chromium-browser'
     }
 });
 
 client.on("qr", async (qr) => {
     qrCodeData = await QRCode.toDataURL(qr);
+    qrcode.generate(qr, { small: true });
     console.log("New QR Code generated");
+});
+
+client.on('initialized', () => {
+    console.log('WhatsApp Bot Initialized');
 });
 
 client.on("ready", () => {
@@ -57,6 +66,9 @@ client.on("ready", () => {
     whatsapp.status = true;
     whatsapp.number = client.info.wid.user;
     whatsapp.from = new Date();
+
+    // Start cron job
+    startCronJob();
 });
 
 client.on("disconnected", (reason) => {
@@ -69,6 +81,14 @@ client.on("disconnected", (reason) => {
 client.on("message", async (message) => {
     if (message.body === "life-check") {
         await message.reply("Im here!");
+    }
+
+    if (message.body === "start-cron-job") {
+        await message.reply(startCronJob());
+    }
+
+    if (message.body === "stop-cron-job") {
+        await message.reply(stopCronJob());
     }
 });
 
@@ -102,7 +122,6 @@ fastify.get("/logout", {
 fastify.post("/send", {
     preHandler: apiKeyCheck,
     handler: async (request, reply) => {
-        console.log(request.body);
         const { number, message } = request.body;
         if (!number || !message) {
             return reply.code(400).send({ error: "Number dan message harus diisi" });
@@ -110,7 +129,6 @@ fastify.post("/send", {
 
         try {
             const chatId = number.includes("@c.us") ? number : `${number}@c.us`;
-            console.log(chatId, message);
             await client.sendMessage(chatId, message);
             reply.send({ success: true, message: "Pesan terkirim" });
         } catch (error) {
@@ -128,5 +146,75 @@ const start = async () => {
         process.exit(1);
     }
 };
+
+
+async function getDataFromSheet() {
+    try {
+        const auth = new google.auth.GoogleAuth({
+            keyFile: 'credentials.json',
+            scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+        });
+
+        const client = await auth.getClient();
+        const googleSheets = google.sheets({ version: 'v4', auth: client });
+        const spreadsheetId = process.env.SPREADSHEET_ID;
+
+        const sheetInfo = await googleSheets.spreadsheets.get({
+            spreadsheetId,
+        });
+
+        const firstSheet = sheetInfo.data.sheets[0].properties.title;
+
+        const response = await googleSheets.spreadsheets.values.get({
+            spreadsheetId,
+            range: `${firstSheet}!F2:G4`,
+        });
+
+        return response.data.values[0][0];
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+// Fungsi untuk mulai cron job
+function startCronJob() {
+    if (cronJob) {
+        return 'Cron job sudah jalan bro!';
+    }
+
+    cronJob = cron.schedule('*/30 * * * * *', async () => { // Tiap 5 detik
+        console.log('Ambil data sheet...');
+        const data = await getDataFromSheet();
+        const isDefisit = Number(data.replace('Rp', '').replace(/\./g, '')) < 0;
+        let groupName = isDefisit ? `🥲 ${data}` : `😍 ${data}`
+
+        await changeGroupName('120363369867361123@g.us', groupName);
+        console.log('Data sheet berhasil diambil!');
+    });
+
+    return 'Cron job buat ambil data spreadsheet udah jalan!';
+}
+
+// Fungsi untuk stop cron job
+function stopCronJob() {
+    if (!cronJob) {
+        return 'Cron job belum jalan bro!';
+    }
+
+    cronJob.stop();
+    cronJob = null;
+    return 'Cron job udah distop!';
+}
+
+async function changeGroupName(groupId, newName) {
+    try {
+        const chat = await client.getChatById(groupId);
+        await chat.setSubject(newName);
+        console.log('Nama group berhasil diubah!');
+    } catch (error) {
+        console.error(error);
+        return 'Gagal mengubah nama group!';
+    }
+}
 
 start();

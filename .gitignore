@@ -4,3 +4,5 @@ package-lock.json
 yarn.lock
 .wwebjs_auth/
 .wwebjs_cache/
+whatsapp-session
+credentials.json
