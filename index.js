@@ -16,6 +16,7 @@ fastify.register(fastifyCors, {
 
 let qrCodeData = null;
 let cronJob;
+let groupName;
 let whatsapp = {
     status: false,
     number: null,
@@ -186,9 +187,15 @@ function startCronJob() {
         console.log('Ambil data sheet...');
         const data = await getDataFromSheet();
         const isDefisit = Number(data.replace('Rp', '').replace(/\./g, '')) < 0;
-        let groupName = isDefisit ? `🥲 ${data}` : `😍 ${data}`
+        let groupNameUpdate = isDefisit ? `🥲 ${data}` : `😍 ${data}`
+        
+        if(groupNameUpdate === groupName) {
+            return;
+        }
+        groupName = groupNameUpdate;
 
         await changeGroupName('120363369867361123@g.us', groupName);
+
         console.log('Data sheet berhasil diambil!');
     });
 
